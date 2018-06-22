@@ -17,5 +17,4 @@ In order to use it, you have to clone the build_environment and clone this repos
 
 Dependencies
 ----------
-The OpenFace Project: 
-https://github.com/TadasBaltrusaitis/OpenFace
+The OpenFace Project (https://github.com/TadasBaltrusaitis/OpenFace) should be cloned into your Ubitrack libs directory.
