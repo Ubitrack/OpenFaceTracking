@@ -34,18 +34,20 @@ find_path(OpenFace_ROOT_DIR
 #message(STATUS "OpenFace_ROOT_DIR: ${OpenFace_ROOT_DIR}")
 
 find_path(OpenFace_INCLUDE_BASE
-  NAMES LandmarkDetector
-  PATHS "${OpenFace_ROOT_DIR}/lib/local"
+  NAMES 3rdParty local
+  PATHS "${OpenFace_ROOT_DIR}/lib"
 )
 #message(STATUS "OpenFace_INCLUDE_BASE: ${OpenFace_INCLUDE_BASE}")
 
 set(OpenFace_INCLUDE_DIRS 
-	${OpenFace_INCLUDE_BASE}/FaceAnalyzer/include
-	${OpenFace_INCLUDE_BASE}/GazeAnalyzer/include
-	${OpenFace_INCLUDE_BASE}/LandmarkDetector/include
-	${OpenFace_INCLUDE_BASE}/Utilities/include
+	${OpenFace_INCLUDE_BASE}/local/FaceAnalyser/include
+	${OpenFace_INCLUDE_BASE}/local/GazeAnalyser/include
+	${OpenFace_INCLUDE_BASE}/local/LandmarkDetector/include
+	${OpenFace_INCLUDE_BASE}/local/Utilities/include
+	${OpenFace_INCLUDE_BASE}/3rdParty/OpenBLAS/include
+	${OpenFace_INCLUDE_BASE}/3rdParty/dlib/include
 )
-#message(STATUS "OpenFace_INCLUDE_DIRS: ${OpenFace_INCLUDE_DIRS}")
+message(STATUS "OpenFace_INCLUDE_DIRS: ${OpenFace_INCLUDE_DIRS}")
 	
 if(WIN32)
 	find_library(OpenFace_FaceAnalyser_LIB

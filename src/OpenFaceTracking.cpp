@@ -57,14 +57,17 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-#include <LandmarkCoreIncludes.h>
+//#include <LandmarkCoreIncludes.h>
+#include "LandmarkDetectorInterop.h"
+#include "FaceDetectorInterop.h"
 
 // get a logger
 static log4cpp::Category& logger( log4cpp::Category::getInstance( "Ubitrack.Vision.OpenFaceTracking" ) );
 
 using namespace Ubitrack;
 using namespace Ubitrack::Vision;
-using namespace LandmarkDetector;
+using namespace LandmarkDetectorInterop;
+using namespace FaceDetectorInterop;
 
 namespace Ubitrack { namespace Drivers {
 
@@ -132,19 +135,20 @@ OpenFaceTracking::OpenFaceTracking( const std::string& sName, boost::shared_ptr<
    if (subgraph->m_DataflowAttributes.hasAttribute("configurationFile"))
    {
       std::string configurationFile = subgraph->m_DataflowAttributes.getAttributeString("configurationFile");
+      string root = "";
 
-      m_face_model_params = new FaceModelParameters(root, LandmarkDetectorCECLM, LandmarkDetectorCLNF, LandmarkDetectorCLM);
+      //m_face_model_params = new FaceModelParameters();
+      m_face_model_params = new FaceModelParameters(root, true, false, false);
 
-      m_face_detector = new FaceDetector(face_model_params.GetHaarLocation(), face_model_params.GetMTCNNLocation());
+      m_face_detector = new FaceDetector(m_face_model_params->GetHaarLocation(), m_face_model_params->GetMTCNNLocation());
 
       // If MTCNN model not available, use HOG
-      if (!face_detector.IsMTCNNLoaded())
+      if (!m_face_detector.IsMTCNNLoaded())
       {
-         FaceDetCNN.IsEnabled = false;
          m_DetectorCNN = false;
          m_DetectorHOG = true;
       }
-      face_model_params.SetFaceDetector(m_DetectorHaar, m_DetectorHOG, m_DetectorCNN);
+      m_face_model_params->SetFaceDetector(m_DetectorHaar, m_DetectorHOG, m_DetectorCNN);
 
       m_landmark_detector = new CLNF(m_face_model_params->model_location);
 
@@ -156,7 +160,6 @@ OpenFaceTracking::OpenFaceTracking( const std::string& sName, boost::shared_ptr<
       UBITRACK_THROW(os.str());
    }
 }
-
 
 int OpenFaceTracking::switchPixelFormat(Vision::Image::PixelFormat pf)
 {

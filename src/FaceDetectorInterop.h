@@ -1,4 +1,7 @@
 ///////////////////////////////////////////////////////////////////////////////
+// Ported from C# to C++
+// Original file: OpenFace\lib\local\CppInerop\FaceDetectorInterop.h
+//
 // Copyright (C) 2017, Tadas Baltrusaitis,
 // all rights reserved.
 //
@@ -8,7 +11,7 @@
 // IF YOU DO NOT AGREE WITH THESE TERMS, YOU MAY NOT USE OR DOWNLOAD THE SOFTWARE.
 //
 // License can be found in OpenFace-license.txt
-
+//
 //     * Any publications arising from the use of this software, including but
 //       not limited to academic journal and conference publications, technical
 //       reports and manuals, must cite at least one of the following works:
@@ -51,7 +54,7 @@
 #define generic __identifier(generic)
 #endif
 
-#include <OpenCVWrappers.h>
+//#include <OpenCVWrappers.h>
 
 #include <LandmarkCoreIncludes.h>
 
@@ -59,7 +62,7 @@
 #undef generic
 #endif
 
-using namespace System::Collections::Generic;
+//using namespace System::Collections::Generic;
 
 #pragma managed
 #include <msclr\marshal.h>
@@ -67,7 +70,7 @@ using namespace System::Collections::Generic;
 
 namespace FaceDetectorInterop {
 
-	public ref class FaceDetector
+	class FaceDetector
 	{
 
 	private:
@@ -79,12 +82,12 @@ namespace FaceDetectorInterop {
 	public:
 
 		// The constructor initializes the dlib face detector
-		FaceDetector(System::String^ haar_location, System::String^ mtcnn_location) 
+		FaceDetector(string & haar_location, string & mtcnn_location) 
 		{
 			// Initialize all of the detectors (TODO should be done on need only basis)
 			face_detector_hog = new dlib::frontal_face_detector(dlib::get_frontal_face_detector());
-			face_detector_mtcnn = new LandmarkDetector::FaceDetectorMTCNN(msclr::interop::marshal_as<std::string>(mtcnn_location));
-			face_detector_haar = new cv::CascadeClassifier(msclr::interop::marshal_as<std::string>(haar_location));
+			face_detector_mtcnn = new LandmarkDetector::FaceDetectorMTCNN(mtcnn_location);
+			face_detector_haar = new cv::CascadeClassifier(haar_location);
 		}
 
 		// Face detection using HOG-SVM classifier
