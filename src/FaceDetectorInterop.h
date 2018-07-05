@@ -64,9 +64,9 @@
 
 //using namespace System::Collections::Generic;
 
-#pragma managed
-#include <msclr\marshal.h>
-#include <msclr\marshal_cppstd.h>
+//#pragma managed
+//#include <msclr\marshal.h>
+//#include <msclr\marshal_cppstd.h>
 
 namespace FaceDetectorInterop {
 
@@ -91,39 +91,39 @@ namespace FaceDetectorInterop {
 		}
 
 		// Face detection using HOG-SVM classifier
-		void DetectFacesHOG(List<System::Windows::Rect>^ o_regions, OpenCVWrappers::RawImage^ intensity, List<float>^ o_confidences)
+		void DetectFacesHOG(vector<cv::Rect_<float>> & o_regions, cv::Mat & intensity, vector<float> & o_confidences)
 		{
 			std::vector<cv::Rect_<float> > regions_ocv;
 			std::vector<float> confidences_std;
 
-			::LandmarkDetector::DetectFacesHOG(regions_ocv, intensity->Mat, *face_detector_hog, confidences_std);
+			::LandmarkDetector::DetectFacesHOG(regions_ocv, intensity, *face_detector_hog, confidences_std);
 
-			o_regions->Clear();
-			o_confidences->Clear();
+			o_regions.clear();
+			o_confidences.clear();
 
 			for (size_t i = 0; i < regions_ocv.size(); ++i)
 			{
-				o_regions->Add(System::Windows::Rect(regions_ocv[i].x, regions_ocv[i].y, regions_ocv[i].width, regions_ocv[i].height));
-				o_confidences->Add(confidences_std[i]);
+				o_regions.push_back(cv::Rect_<float>(regions_ocv[i].x, regions_ocv[i].y, regions_ocv[i].width, regions_ocv[i].height));
+				o_confidences.push_back(confidences_std[i]);
 			}
 		}
 		
 		// Face detection using HOG-SVM classifier
-		void DetectFacesHaar(List<System::Windows::Rect>^ o_regions, OpenCVWrappers::RawImage^ intensity, List<float>^ o_confidences)
+		void DetectFacesHaar(vector<cv::Rect_<float>> & o_regions, cv::Mat & intensity, vector<float> & o_confidences)
 		{
 			
 			std::vector<cv::Rect_<float> > regions_ocv;
 
-			::LandmarkDetector::DetectFaces(regions_ocv, intensity->Mat, *face_detector_haar);
+			::LandmarkDetector::DetectFaces(regions_ocv, intensity, *face_detector_haar);
 
-			o_regions->Clear();
-			o_confidences->Clear();
+			o_regions.clear();
+			o_confidences.clear();
 
 			for(size_t i = 0; i < regions_ocv.size(); ++i)
 			{
-				o_regions->Add(System::Windows::Rect(regions_ocv[i].x, regions_ocv[i].y, regions_ocv[i].width, regions_ocv[i].height));
+				o_regions.push_back(cv::Rect_<float>(regions_ocv[i].x, regions_ocv[i].y, regions_ocv[i].width, regions_ocv[i].height));
 				// As Haar does not provide confidence, create a fake value
-				o_confidences->Add(1);
+				o_confidences.push_back(1);
 			}
 		}
 
@@ -133,47 +133,38 @@ namespace FaceDetectorInterop {
 		}
 
 		// Face detection using MTCNN face detector
-		void DetectFacesMTCNN(List<System::Windows::Rect>^ o_regions, OpenCVWrappers::RawImage^ rgb_image, List<float>^ o_confidences)
+		void DetectFacesMTCNN(vector<cv::Rect_<float>> & o_regions, cv::Mat & rgb_image, vector<float> & o_confidences)
 		{
 			std::vector<cv::Rect_<float> > regions_ocv;
 			std::vector<float> confidences_std;
 
-			::LandmarkDetector::DetectFacesMTCNN(regions_ocv, rgb_image->Mat, *face_detector_mtcnn, confidences_std);
+			::LandmarkDetector::DetectFacesMTCNN(regions_ocv, rgb_image, *face_detector_mtcnn, confidences_std);
 
-			o_regions->Clear();
-			o_confidences->Clear();
+			o_regions.clear();
+			o_confidences.clear();
 
 			for (size_t i = 0; i < regions_ocv.size(); ++i)
 			{
-				o_regions->Add(System::Windows::Rect(regions_ocv[i].x, regions_ocv[i].y, regions_ocv[i].width, regions_ocv[i].height));
-				o_confidences->Add(confidences_std[i]);
+				o_regions.push_back(cv::Rect_<float>(regions_ocv[i].x, regions_ocv[i].y, regions_ocv[i].width, regions_ocv[i].height));
+				o_confidences.push_back(confidences_std[i]);
 			}
 		}
 
-		// Finalizer. Definitely called before Garbage Collection,
-		// but not automatically called on explicit Dispose().
-		// May be called multiple times.
-		!FaceDetector()
-		{
-			if (face_detector_hog != nullptr)
-			{
-				delete face_detector_hog;
-			}
-			if (face_detector_mtcnn != nullptr)
-			{
-				delete face_detector_mtcnn;
-			}
-			if (face_detector_haar != nullptr)
-			{
-				delete face_detector_haar;
-			}
-		}
-
-		// Destructor. Called on explicit Dispose() only.
 		~FaceDetector()
 		{
-			this->!FaceDetector();
-		}
+         if (face_detector_hog != nullptr)
+         {
+            delete face_detector_hog;
+         }
+         if (face_detector_mtcnn != nullptr)
+         {
+            delete face_detector_mtcnn;
+         }
+         if (face_detector_haar != nullptr)
+         {
+            delete face_detector_haar;
+         }
+      }
 
 	};
 

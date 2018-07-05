@@ -40,9 +40,9 @@
 
 #pragma once
 
-#pragma managed
-#include <msclr\marshal.h>
-#include <msclr\marshal_cppstd.h>
+//#pragma managed
+//#include <msclr\marshal.h>
+//#include <msclr\marshal_cppstd.h>
 
 #pragma unmanaged
 
@@ -286,26 +286,22 @@ namespace LandmarkDetectorInterop {
 			return ::LandmarkDetector::DetectLandmarksInImage(rgb_image, bounding_box, *clnf, *modelParams.getParams(), gray_image);
 		}
 
-		void GetPoseWRTCamera(List<float>^ pose, float fx, float fy, float cx, float cy) {
-			auto pose_vec = ::LandmarkDetector::GetPoseWRTCamera(*clnf, fx, fy, cx, cy);
+      /*void GetPoseWRTCamera(List<float>^ pose, float fx, float fy, float cx, float cy) {
+			auto pose_vec = LandmarkDetector::GetPoseWRTCamera(*clnf, fx, fy, cx, cy);
 			pose->Clear();
 			for(int i = 0; i < 6; ++i)
 			{
 				pose->Add(pose_vec[i]);
 			}
-		}
+		}*/
 
-		void GetPose(List<float>^ pose, float fx, float fy, float cx, float cy) {
+		void GetPose(cv::Vec6f & pose, float fx, float fy, float cx, float cy) {
 			auto pose_vec = ::LandmarkDetector::GetPose(*clnf, fx, fy, cx, cy);
-			pose->Clear();
-			for(int i = 0; i < 6; ++i)
-			{
-				pose->Add(pose_vec[i]);
-			}
+			pose = pose_vec;
 		}
 	
 		// Get the mask of which landmarks are currently visible (not self-occluded)
-		List<bool>^ GetVisibilities()
+		/*List<bool>^ GetVisibilities()
 		{
 			cv::Mat_<int> vis = clnf->GetVisibilities();
 			List<bool>^ visibilities = gcnew List<bool>();
@@ -315,9 +311,9 @@ namespace LandmarkDetectorInterop {
 				visibilities->Add(*vis_it != 0);
 			}
 			return visibilities;
-		}
+		}*/
 
-		List<System::Tuple<float,float>^>^ CalculateVisibleLandmarks() {
+		/*List<System::Tuple<float,float>^>^ CalculateVisibleLandmarks() {
 			vector<cv::Point2f> vecLandmarks = ::LandmarkDetector::CalculateVisibleLandmarks(*clnf);
 				
 			auto landmarks = gcnew System::Collections::Generic::List<System::Tuple<float, float>^>();
@@ -326,20 +322,14 @@ namespace LandmarkDetectorInterop {
 			}
 
 			return landmarks;
-		}
+		}*/
 
-		List<System::Tuple<float, float>^>^ CalculateAllLandmarks() {
+      vector<cv::Point2f> CalculateAllLandmarks() {
 			vector<cv::Point2f> vecLandmarks = ::LandmarkDetector::CalculateAllLandmarks(*clnf);
-
-			auto landmarks = gcnew List<System::Tuple<float, float>^>();
-			for (cv::Point2f p : vecLandmarks) {
-				landmarks->Add(gcnew System::Tuple<float, float>(p.x, p.y));
-			}
-
-			return landmarks;
+			return vecLandmarks;
 		}
 
-		List<System::Tuple<float, float>^>^ CalculateAllEyeLandmarks() {
+		/*List<System::Tuple<float, float>^>^ CalculateAllEyeLandmarks() {
 			vector<cv::Point2f> vecLandmarks = ::LandmarkDetector::CalculateAllEyeLandmarks(*clnf);
 
 			auto landmarks = gcnew System::Collections::Generic::List<System::Tuple<float, float>^>();
@@ -348,9 +338,9 @@ namespace LandmarkDetectorInterop {
 			}
 
 			return landmarks;
-		}
+		}*/
 
-		List<System::Tuple<float, float, float>^>^ CalculateAllEyeLandmarks3D(float fx, float fy, float cx, float cy) {
+		/*List<System::Tuple<float, float, float>^>^ CalculateAllEyeLandmarks3D(float fx, float fy, float cx, float cy) {
 			vector<cv::Point3f> vecLandmarks = ::LandmarkDetector::Calculate3DEyeLandmarks(*clnf, fx, fy, cx, cy);
 
 			auto landmarks = gcnew System::Collections::Generic::List<System::Tuple<float, float, float>^>();
@@ -359,9 +349,9 @@ namespace LandmarkDetectorInterop {
 			}
 
 			return landmarks;
-		}
+		}*/
 
-		List<System::Tuple<float, float>^>^ CalculateVisibleEyeLandmarks() {
+		/*List<System::Tuple<float, float>^>^ CalculateVisibleEyeLandmarks() {
 			vector<cv::Point2f> vecLandmarks = ::LandmarkDetector::CalculateVisibleEyeLandmarks(*clnf);
 
 			auto landmarks = gcnew System::Collections::Generic::List<System::Tuple<float, float>^>();
@@ -370,9 +360,9 @@ namespace LandmarkDetectorInterop {
 			}
 
 			return landmarks;
-		}
+		}*/
 
-		List<System::Tuple<float, float, float>^>^ Calculate3DLandmarks(float fx, float fy, float cx, float cy) {
+      /*List<System::Tuple<float, float, float>^>^ Calculate3DLandmarks(float fx, float fy, float cx, float cy) {
 				
 			cv::Mat_<float> shape3D = clnf->GetShape(fx, fy, cx, cy);
 				
@@ -384,9 +374,9 @@ namespace LandmarkDetectorInterop {
 			}
 
 			return landmarks_3D;
-		}
+		}*/
 
-		List<System::Tuple<System::Windows::Point, System::Windows::Point>^>^ CalculateBox(float fx, float fy, float cx, float cy) {
+		/*List<System::Tuple<System::Windows::Point, System::Windows::Point>^>^ CalculateBox(float fx, float fy, float cx, float cy) {
 
 			cv::Vec6f pose = ::LandmarkDetector::GetPose(*clnf, fx,fy, cx, cy);
 
@@ -399,20 +389,20 @@ namespace LandmarkDetectorInterop {
 			}
 
 			return lines;
-		}
+		}*/
 
-		int GetNumPoints()
+		/*int GetNumPoints()
 		{
 			return clnf->pdm.NumberOfPoints();
-		}
+		}*/
 
-		int GetNumModes()
+		/*int GetNumModes()
 		{
 			return clnf->pdm.NumberOfModes();
-		}
+		}*/
 
 		// Getting the non-rigid shape parameters describing the facial expression
-		List<float>^ GetNonRigidParams()
+      /*List<float>^ GetNonRigidParams()
 		{
 			auto non_rigid_params = gcnew List<float>();
 
@@ -422,10 +412,10 @@ namespace LandmarkDetectorInterop {
 			}
 
 			return non_rigid_params;
-		}
+		}*/
 
 		// Getting the rigid shape parameters describing face scale rotation and translation (scale,rotx,roty,rotz,tx,ty)
-		List<float>^ GetRigidParams()
+      /*List<float>^ GetRigidParams()
 		{
 			auto rigid_params = gcnew List<float>();
 
@@ -434,15 +424,15 @@ namespace LandmarkDetectorInterop {
 				rigid_params->Add(clnf->params_global[i]);
 			}
 			return rigid_params;
-		}
+		}*/
 
 		// Rigid params followed by non-rigid ones
-		List<float>^ GetParams()
+      /*List<float>^ GetParams()
 		{
 			auto all_params = GetRigidParams();
 			all_params->AddRange(GetNonRigidParams());
 			return all_params;
-		}
+		}*/
 
 	};
 

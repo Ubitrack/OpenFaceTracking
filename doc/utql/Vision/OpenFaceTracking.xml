@@ -38,9 +38,9 @@
 		<DataflowConfiguration>
 			<UbitrackLib class="OpenFaceTracking" />
 
-            <Attribute name="configurationFile" default="C:\Program Files\Visage Technologies\visageSDK\Samples\data\Face Detector.cfg" displayName="Configuration File" xsi:type="PathAttributeDeclarationType">
+            <Attribute name="modelDirectory" default="build/install" displayName="Model Directory" xsi:type="PathAttributeDeclarationType">
                 <Description>
-                	<h:p>Required: The main OpenFace configuration file such as <h:code>???</h:code> or <h:code>???</h:code>.</h:p>
+                	<h:p>Required: Path to the model directory, which contains <h:code>model/main_ceclm_general.txt</h:code>.</h:p>
                	</Description>
             </Attribute>
 		</DataflowConfiguration>

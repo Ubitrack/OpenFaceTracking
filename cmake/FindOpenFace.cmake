@@ -46,6 +46,7 @@ set(OpenFace_INCLUDE_DIRS
 	${OpenFace_INCLUDE_BASE}/local/Utilities/include
 	${OpenFace_INCLUDE_BASE}/3rdParty/OpenBLAS/include
 	${OpenFace_INCLUDE_BASE}/3rdParty/dlib/include
+	${OpenFace_INCLUDE_BASE}/3rdParty/tbb/include
 )
 message(STATUS "OpenFace_INCLUDE_DIRS: ${OpenFace_INCLUDE_DIRS}")
 	
