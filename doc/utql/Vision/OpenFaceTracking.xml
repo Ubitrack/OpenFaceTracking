@@ -6,7 +6,7 @@
 	xmlns:h="http://www.w3.org/1999/xhtml"
 	xsi:schemaLocation='http://ar.in.tum.de/ubitrack/utql ../../../schema/utql_templates.xsd'>
 
-	<Pattern name="OpenFaceTracking" displayName="Visage Face Tracking">
+	<Pattern name="OpenFaceTracking" displayName="Open Face Tracking">
 		<Description>
 			<h:p>
 				

@@ -67,6 +67,14 @@ if(WIN32)
 	  NAMES Utilities
 	  PATHS ${OpenFace_ROOT_DIR}/Release
 	)
+	find_library(OpenFace_DLIB_LIB
+	  NAMES dlib
+	  PATHS ${OpenFace_ROOT_DIR}/Release
+	)
+	find_library(OpenFace_TBB_LIB
+	  NAMES tbb
+	  PATHS ${OpenFace_ROOT_DIR}/lib/3rdParty/tbb/lib/x64/v140
+	)
 else()
 	find_library(OpenFace_FaceAnalyser_LIB
 	  NAMES FaceAnalyser
@@ -80,11 +88,23 @@ else()
 	find_library(OpenFace_Utilities_LIB
 	  NAMES Utilities
 	)
+	find_library(OpenFace_DLIB_LIB
+	  NAMES dlib
+	)
+	find_library(OpenFace_TBB_LIB
+	  NAMES tbb
+	)
 endif()
-set(OpenFace_LIBRARIES "${OpenFace_FaceAnalyser_LIB} ${OpenFace_GazeAnalyser_LIB} ${OpenFace_LandmarkDetector_LIB} ${OpenFace_Utilities_LIB}")
-#message(STATUS "OpenFace_LIBRARIES: ${OpenFace_LIBRARIES}")
+set(OpenFace_LIBRARIES "${OpenFace_FaceAnalyser_LIB};${OpenFace_GazeAnalyser_LIB};${OpenFace_LandmarkDetector_LIB};${OpenFace_Utilities_LIB};${OpenFace_DLIB_LIB};${OpenFace_TBB_LIB}")
+#LIST (APPEND OpenFace_LIBRARIES ${OpenFace_FaceAnalyser_LIB})
+#LIST (APPEND OpenFace_LIBRARIES ${OpenFace_GazeAnalyser_LIB})
+#LIST (APPEND OpenFace_LIBRARIES ${OpenFace_LandmarkDetector_LIB})
+#LIST (APPEND OpenFace_LIBRARIES ${OpenFace_Utilities_LIB})
+#LIST (APPEND OpenFace_LIBRARIES ${OpenFace_TBB_LIB})
 
-set(OpenFace_LIBRARIES ${OpenFace_LIBRARY})
+message(STATUS "OpenFace_LIBRARIES: ${OpenFace_LIBRARIES}")
+
+#set(${OpenFace_LIBRARY} OpenFace_LIBRARIES)
 
 find_package_handle_standard_args(
   OpenFace
@@ -96,6 +116,7 @@ find_package_handle_standard_args(
 	OpenFace_GazeAnalyser_LIB 
 	OpenFace_LandmarkDetector_LIB 
 	OpenFace_Utilities_LIB 
+	OpenFace_TBB_LIB
 	OpenFace_INCLUDE_DIRS
 )
  
