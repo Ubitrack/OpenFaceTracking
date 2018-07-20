@@ -74,7 +74,7 @@
 
 //using namespace System::Collections::Generic;
 
-#pragma managed
+//#pragma managed
 
 namespace LandmarkDetectorInterop {
 

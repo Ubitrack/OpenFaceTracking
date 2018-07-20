@@ -53,28 +53,33 @@ message(STATUS "OpenFace_INCLUDE_DIRS: ${OpenFace_INCLUDE_DIRS}")
 if(WIN32)
 	find_library(OpenFace_FaceAnalyser_LIB
 	  NAMES FaceAnalyser
-	  PATHS ${OpenFace_ROOT_DIR}/Release
+	  PATHS ${OpenFace_ROOT_DIR}/x64/Release
 	)
 	find_library(OpenFace_GazeAnalyser_LIB
 	  NAMES GazeAnalyser
-	  PATHS ${OpenFace_ROOT_DIR}/Release
+	  PATHS ${OpenFace_ROOT_DIR}/x64/Release
 	)
 	find_library(OpenFace_LandmarkDetector_LIB
 	  NAMES LandmarkDetector
-	  PATHS ${OpenFace_ROOT_DIR}/Release
+	  PATHS ${OpenFace_ROOT_DIR}/x64/Release
 	)
 	find_library(OpenFace_Utilities_LIB
 	  NAMES Utilities
-	  PATHS ${OpenFace_ROOT_DIR}/Release
+	  PATHS ${OpenFace_ROOT_DIR}/x64/Release
 	)
 	find_library(OpenFace_DLIB_LIB
 	  NAMES dlib
-	  PATHS ${OpenFace_ROOT_DIR}/Release
+	  PATHS ${OpenFace_ROOT_DIR}/x64/Release
 	)
 	find_library(OpenFace_TBB_LIB
 	  NAMES tbb
-	  PATHS ${OpenFace_ROOT_DIR}/lib/3rdParty/tbb/lib/x64/v140
+	  #PATHS ${OpenFace_ROOT_DIR}/lib/3rdParty/tbb/lib/x64/v140
+	  PATHS C:/libraries/Ubitrack_libs/vs2015-64/tbb/lib/intel64/vc12
 	)
+	find_library(OpenFace_OpenBLAS_LIB
+	  NAMES libopenblas
+	  PATHS ${OpenFace_ROOT_DIR}/lib/3rdParty/OpenBLAS/lib/x64
+	)	
 else()
 	find_library(OpenFace_FaceAnalyser_LIB
 	  NAMES FaceAnalyser
@@ -95,7 +100,7 @@ else()
 	  NAMES tbb
 	)
 endif()
-set(OpenFace_LIBRARIES "${OpenFace_FaceAnalyser_LIB};${OpenFace_GazeAnalyser_LIB};${OpenFace_LandmarkDetector_LIB};${OpenFace_Utilities_LIB};${OpenFace_DLIB_LIB};${OpenFace_TBB_LIB}")
+set(OpenFace_LIBRARIES "${OpenFace_FaceAnalyser_LIB};${OpenFace_GazeAnalyser_LIB};${OpenFace_LandmarkDetector_LIB};${OpenFace_Utilities_LIB};${OpenFace_DLIB_LIB};${OpenFace_TBB_LIB};${OpenFace_OpenBLAS_LIB};${Boost_FILESYSTEM_LIBRARY}")
 #LIST (APPEND OpenFace_LIBRARIES ${OpenFace_FaceAnalyser_LIB})
 #LIST (APPEND OpenFace_LIBRARIES ${OpenFace_GazeAnalyser_LIB})
 #LIST (APPEND OpenFace_LIBRARIES ${OpenFace_LandmarkDetector_LIB})
@@ -116,7 +121,9 @@ find_package_handle_standard_args(
 	OpenFace_GazeAnalyser_LIB 
 	OpenFace_LandmarkDetector_LIB 
 	OpenFace_Utilities_LIB 
+	OpenFace_DLIB_LIB
 	OpenFace_TBB_LIB
+	OpenFace_OpenBLAS_LIB
 	OpenFace_INCLUDE_DIRS
 )
  

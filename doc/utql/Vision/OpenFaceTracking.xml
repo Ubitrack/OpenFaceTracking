@@ -40,7 +40,7 @@
 
             <Attribute name="modelDirectory" default="build/install" displayName="Model Directory" xsi:type="PathAttributeDeclarationType">
                 <Description>
-                	<h:p>Required: Path to the model directory, which contains <h:code>model/main_ceclm_general.txt</h:code>.</h:p>
+                	<h:p>Required: Path to the model directory, which contains <h:code>/model/main_ceclm_general.txt</h:code> and other model files.</h:p>
                	</Description>
             </Attribute>
 		</DataflowConfiguration>

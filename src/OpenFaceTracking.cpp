@@ -272,6 +272,8 @@ double OpenFaceTracking::estimateHeadPose(cv::Vec6f & pose, Measurement::ImageMe
       // Record an observation
       //RecordObservation(recorder, visualizer_of.GetVisImage(), i, detection_succeeding, reader.GetFx(), reader.GetFy(), reader.GetCx(), reader.GetCy(), 0, 0);
    }
+
+   return 0.0f;
 }
 
 OpenFaceTracking::~OpenFaceTracking()

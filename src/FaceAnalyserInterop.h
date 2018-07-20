@@ -65,8 +65,8 @@
 #include <VisualizationUtils.h>
 
 // Boost stuff
-#include <boost/filesystem.hpp>
-#include <boost/filesystem/fstream.hpp>
+//#include <boost/filesystem.hpp>
+//#include <boost/filesystem/fstream.hpp>
 
 #ifdef __cplusplus_cli
 #undef generic
