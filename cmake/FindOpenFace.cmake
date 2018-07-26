@@ -46,7 +46,8 @@ set(OpenFace_INCLUDE_DIRS
 	${OpenFace_INCLUDE_BASE}/local/Utilities/include
 	${OpenFace_INCLUDE_BASE}/3rdParty/OpenBLAS/include
 	${OpenFace_INCLUDE_BASE}/3rdParty/dlib/include
-	${OpenFace_INCLUDE_BASE}/3rdParty/tbb/include
+	#${OpenFace_INCLUDE_BASE}/3rdParty/tbb/include
+	C:/libraries/Ubitrack_libs/vs2015-64/tbb/include
 )
 message(STATUS "OpenFace_INCLUDE_DIRS: ${OpenFace_INCLUDE_DIRS}")
 	
@@ -67,6 +68,10 @@ if(WIN32)
 	  NAMES Utilities
 	  PATHS ${OpenFace_ROOT_DIR}/x64/Release
 	)
+	find_library(OpenFace_OpenBLAS_LIB
+	  NAMES libopenblas
+	  PATHS ${OpenFace_ROOT_DIR}/lib/3rdParty/OpenBLAS/lib/x64
+	)	
 	find_library(OpenFace_DLIB_LIB
 	  NAMES dlib
 	  PATHS ${OpenFace_ROOT_DIR}/x64/Release
@@ -76,10 +81,6 @@ if(WIN32)
 	  #PATHS ${OpenFace_ROOT_DIR}/lib/3rdParty/tbb/lib/x64/v140
 	  PATHS C:/libraries/Ubitrack_libs/vs2015-64/tbb/lib/intel64/vc12
 	)
-	find_library(OpenFace_OpenBLAS_LIB
-	  NAMES libopenblas
-	  PATHS ${OpenFace_ROOT_DIR}/lib/3rdParty/OpenBLAS/lib/x64
-	)	
 else()
 	find_library(OpenFace_FaceAnalyser_LIB
 	  NAMES FaceAnalyser
@@ -93,6 +94,9 @@ else()
 	find_library(OpenFace_Utilities_LIB
 	  NAMES Utilities
 	)
+	find_library(OpenFace_OpenBLAS_LIB
+	  NAMES libopenblas
+	)	
 	find_library(OpenFace_DLIB_LIB
 	  NAMES dlib
 	)
