@@ -107,7 +107,7 @@ public:
 protected:
 	
 	// the ports
-	Dataflow::PushConsumer< Measurement::ImageMeasurement > m_inPortRGB;
+	Dataflow::PushConsumer< Measurement::ImageMeasurement > m_inPort;
 
 	Dataflow::PushSupplier< Measurement::Pose > m_outPort;
 	
@@ -133,18 +133,21 @@ private:
    double estimateHeadPose(cv::Vec6f & pose, Measurement::ImageMeasurement imageRGB);
 
    // convert from ubitrack enum to visage enum (for image pixel format)
-   //int switchPixelFormat(Vision::Image::PixelFormat pf);
+   void OpenFaceTracking::printPixelFormat(Measurement::ImageMeasurement imageRGB);
 };
 
 
 OpenFaceTracking::OpenFaceTracking( const std::string& sName, boost::shared_ptr< Graph::UTQLSubgraph > subgraph )
 	: Dataflow::Component( sName )	
 	, m_outPort( "Output", *this )
-	, m_inPortRGB( "ImageInputRGB", *this, boost::bind(&OpenFaceTracking::newImage, this, _1))
+	, m_inPort( "ImageInput", *this, boost::bind(&OpenFaceTracking::newImage, this, _1))
 {
+	LOG4CPP_INFO(logger, "enter OpenFaceTracking::OpenFaceTracking");
    if (subgraph->m_DataflowAttributes.hasAttribute("modelDirectory"))
    {
       std::string modelDir = subgraph->m_DataflowAttributes.getAttributeString("modelDirectory");
+	  //modelDir = "C:/libraries/JoeSRG/";
+	  LOG4CPP_INFO(logger, "Model Directory: " << modelDir);
 
       //m_face_model_params = new FaceModelParameters();
       m_face_model_params = new FaceModelParameters(modelDir, true, false, false);
@@ -158,10 +161,13 @@ OpenFaceTracking::OpenFaceTracking( const std::string& sName, boost::shared_ptr<
          m_DetectorHOG = true;
       }
       m_face_model_params->SetFaceDetector(m_DetectorHaar, m_DetectorHOG, m_DetectorCNN);
+	  m_face_model_params->optimiseForVideo();
 
       m_landmark_detector = new CLNF(*m_face_model_params);
 
       m_face_analyser = new FaceAnalyserManaged(modelDir, m_DynamicAUModels, m_image_output_size, m_MaskAligned);
+
+	  m_landmark_detector->Reset();
    }
    else 
    {
@@ -169,57 +175,75 @@ OpenFaceTracking::OpenFaceTracking( const std::string& sName, boost::shared_ptr<
       os << "OpenFace Model Directory is required, but was not provided!";
       UBITRACK_THROW(os.str());
    }
+   LOG4CPP_INFO(logger, "exit OpenFaceTracking::OpenFaceTracking");
 }
 
-/*int OpenFaceTracking::switchPixelFormat(Vision::Image::PixelFormat pf)
+void OpenFaceTracking::printPixelFormat(Measurement::ImageMeasurement imageRGB)
 {
    using Ubitrack::Vision::Image;
-   switch (pf)
+   switch (imageRGB->pixelFormat())
    {
    case Image::LUMINANCE:
-      return VISAGE_FRAMEGRABBER_FMT_LUMINANCE;
+	   LOG4CPP_INFO(logger, "Image::LUMINANCE");
+	   break;
    case Image::RGB:
-      return VISAGE_FRAMEGRABBER_FMT_RGB;
+	   LOG4CPP_INFO(logger, "Image::RGB");
+	   break;
    case Image::BGR:
-      return VISAGE_FRAMEGRABBER_FMT_BGR;
+	   LOG4CPP_INFO(logger, "Image::BGR");
+	   break;
    case Image::RGBA:
-      return VISAGE_FRAMEGRABBER_FMT_RGBA;
+	   LOG4CPP_INFO(logger, "Image::RGBA");
+	   break;
    case Image::BGRA:
-      return VISAGE_FRAMEGRABBER_FMT_BGRA;
+      LOG4CPP_INFO(logger, "Image::BGRA");
+	  break;
    case Image::YUV422:
+	   LOG4CPP_INFO(logger, "Image::YUV422");
+	   break;
    case Image::YUV411:
+	   LOG4CPP_INFO(logger, "Image::YUV411");
+	   break;
    case Image::RAW:
+	   LOG4CPP_INFO(logger, "Image::RAW");
+	   break;
    case Image::DEPTH:
+	   LOG4CPP_INFO(logger, "Image::DEPTH");
+	   break;
    case Image::UNKNOWN_PIXELFORMAT:
+	   LOG4CPP_INFO(logger, "Image::UNKNOWN_PIXELFORMAT");
+	   break;
    default:
-      return -1;
+      break;
    }
-}*/
+}
 
 
 void OpenFaceTracking::newImage(Measurement::ImageMeasurement imageRGB)
 {
-   /*int visageFormat = switchPixelFormat(imageRGB->pixelFormat());
-   if (visageFormat == -1)
+   LOG4CPP_INFO(logger, "enter OpenFaceTracking::newImage");
+   printPixelFormat(imageRGB);
    {
-      LOG4CPP_ERROR(logger, "YUV422, YUV411, RAW, DEPTH, UNKNOWN_PIXELFORMAT are not supported by Visage");
-      LOG4CPP_ERROR(logger, "imageRGB->pixelFormat() == " << imageRGB->pixelFormat());
-   }
-   else*/
-   {
-      // the direct show image is rotated 180 degrees
+      // the direct show image is flipped 180 degrees
       cv::Mat dest;
-      cv::rotate(imageRGB->Mat(), dest, cv::RotateFlags::ROTATE_180);
+	  int origin = imageRGB->origin();
+	  if (origin == 0) {
+		  dest = imageRGB->Mat();
+	  }
+	  else {
+		  cv::flip(imageRGB->Mat(), dest, 0);
+	  }
+      //cv::rotate(imageRGB->Mat(), dest, cv::RotateFlags::ROTATE_180);
 
       // pass the image to OpenFace
       cv::Vec6f pose;
       double confidence = estimateHeadPose(pose, imageRGB);
       
-      if (confidence >= 0.1f)
+      if (confidence >= 0.0f)
       {
-         LOG4CPP_DEBUG(logger, "Head Rotation X Y Z:  " << pose[3] << " " << pose[4] << " " << pose[5]);
-         LOG4CPP_DEBUG(logger, "Head Translation X Y Z: " << pose[0] << " " << pose[1] << " " << pose[2]);
-         LOG4CPP_DEBUG(logger, "Tracking Confidence: " << confidence);
+		  LOG4CPP_INFO(logger, "Tracking Confidence: " << confidence);
+		  LOG4CPP_INFO(logger, "Head Rotation X Y Z:  " << pose[3] << " " << pose[4] << " " << pose[5]);
+		  LOG4CPP_INFO(logger, "Head Translation X Y Z: " << pose[0] << " " << pose[1] << " " << pose[2]);
       }
      
      // output head pose
@@ -229,23 +253,29 @@ void OpenFaceTracking::newImage(Measurement::ImageMeasurement imageRGB)
       Measurement::Pose meaHeadPose = Measurement::Pose(imageRGB.time(), headPose);
       m_outPort.send(meaHeadPose);
    }
+   LOG4CPP_INFO(logger, "exit OpenFaceTracking::newImage");
 }
 
 double OpenFaceTracking::estimateHeadPose(cv::Vec6f & pose, Measurement::ImageMeasurement imageRGB)
 {
+   LOG4CPP_INFO(logger, "enter OpenFaceTracking::estimateHeadPose");
    // Detect faces here and return bounding boxes
    vector<cv::Rect_<float>> face_detections;
    vector<float> confidences;
+   float confidence = 0.0f;
    if (m_DetectorHOG)
    {
+	  LOG4CPP_INFO(logger, "m_face_detector->DetectFacesHOG");
       m_face_detector->DetectFacesHOG(face_detections, imageRGB->getGrayscale()->Mat(), confidences);
    }
    else if (m_DetectorCNN)
    {
+	  LOG4CPP_INFO(logger, "m_face_detector->DetectFacesMTCNN");
       m_face_detector->DetectFacesMTCNN(face_detections, imageRGB->Mat(), confidences);
    }
    else if (m_DetectorHaar)
    {
+	  LOG4CPP_INFO(logger, "m_face_detector->DetectFacesHaar");
       m_face_detector->DetectFacesHaar(face_detections, imageRGB->getGrayscale()->Mat(), confidences);
    }
 
@@ -254,26 +284,37 @@ double OpenFaceTracking::estimateHeadPose(cv::Vec6f & pose, Measurement::ImageMe
    {
       //bool detection_succeeding = m_landmark_detector->DetectFaceLandmarksInImage(imageRGB->Mat(), face_detections[i], *m_face_model_params, imageGray->Mat());
       bool detection_succeeding = m_landmark_detector->DetectFaceLandmarksInImage(imageRGB->Mat(), face_detections[0], *m_face_model_params, imageRGB->getGrayscale()->Mat());
+	  if (detection_succeeding) {
+		  LOG4CPP_INFO(logger, "m_landmark_detector->DetectFaceLandmarksInImage succcess");
+	  }
+	  else {
+		  LOG4CPP_INFO(logger, "m_landmark_detector->DetectFaceLandmarksInImage failure");
+	  }
 
+	  LOG4CPP_INFO(logger, "auto landmarks = m_landmark_detector->CalculateAllLandmarks();");
       auto landmarks = m_landmark_detector->CalculateAllLandmarks();
 
       // Predict action units
-      auto au_preds = m_face_analyser->PredictStaticAUsAndComputeFeatures(imageRGB->Mat(), landmarks);
+	  //LOG4CPP_INFO(logger, "auto au_preds = m_face_analyser->PredictStaticAUsAndComputeFeatures(imageRGB->Mat(), landmarks);");
+	  //auto au_preds = m_face_analyser->PredictStaticAUsAndComputeFeatures(imageRGB->Mat(), landmarks);
 
       // Only the final face will contain the details
       //VisualizeFeatures(frame, visualizer_of, landmarks, landmark_detector.GetVisibilities(), detection_succeeding, i == 0, true, reader.GetFx(), reader.GetFy(), reader.GetCx(), reader.GetCy(), progress);
-      float fx = -1;
-      float fy = -1;
-      float cx = -1;
-      float cy = -1;
+      float fx = 831;
+      float fy = 831;
+      float cx = 403;
+      float cy = 288;
+	  LOG4CPP_INFO(logger, "m_landmark_detector->GetPose(pose, fx, fy, cx, cy);");
       m_landmark_detector->GetPose(pose, fx, fy, cx, cy);
-      return m_landmark_detector->GetConfidence();
+	  LOG4CPP_INFO(logger, "confidence = m_landmark_detector->GetConfidence();");
+	  confidence = m_landmark_detector->GetConfidence();
 
       // Record an observation
       //RecordObservation(recorder, visualizer_of.GetVisImage(), i, detection_succeeding, reader.GetFx(), reader.GetFy(), reader.GetCx(), reader.GetCy(), 0, 0);
    }
 
-   return 0.0f;
+   LOG4CPP_INFO(logger, "exit OpenFaceTracking::estimateHeadPose");
+   return confidence;
 }
 
 OpenFaceTracking::~OpenFaceTracking()
@@ -286,21 +327,25 @@ OpenFaceTracking::~OpenFaceTracking()
 
 void OpenFaceTracking::start()
 {
-	
+   LOG4CPP_DEBUG(logger, "enter OpenFaceTracking::start");
 	Component::start();
+   LOG4CPP_DEBUG(logger, "exit OpenFaceTracking::start");
 }
 
 
 void OpenFaceTracking::stop()
 {
-	
+   LOG4CPP_DEBUG(logger, "enter OpenFaceTracking::stop");
 	Component::stop();
+   LOG4CPP_DEBUG(logger, "exit OpenFaceTracking::stop");
 }
 
 
 } } // namespace Ubitrack::Driver
 
 UBITRACK_REGISTER_COMPONENT( Dataflow::ComponentFactory* const cf ) {
+   LOG4CPP_DEBUG(logger, "enter UBITRACK_REGISTER_COMPONENT");
 	cf->registerComponent< Ubitrack::Drivers::OpenFaceTracking > ( "OpenFaceTracking" );
+   LOG4CPP_DEBUG(logger, "exit UBITRACK_REGISTER_COMPONENT");
 }
 
