@@ -120,26 +120,25 @@ public:
 		face_analyser->PostprocessOutputFile(file);
 	}
 
-	/*void AddNextFrame(cv::Mat & frame, List<System::Tuple<float, float>^>^ landmarks, bool success, bool online) {
+	/*void AddNextFrame(cv::Mat & frame, vector<cv::Point2f> & landmarks, bool success, bool online) {
 			
 		// Construct an OpenCV matric from the landmarks
-		cv::Mat_<float> landmarks_mat(landmarks->Count * 2, 1, 0.0);
-		for (int i = 0; i < landmarks->Count; ++i)
+		cv::Mat_<float> landmarks_mat(landmarks.size() * 2, 1, 0.0);
+		for (int i = 0; i < landmarks.size(); ++i)
 		{
-			landmarks_mat.at<float>(i, 0) = landmarks[i]->Item1;
-			landmarks_mat.at<float>(i + landmarks->Count, 0) = landmarks[i]->Item2;
+			landmarks_mat.at<float>(i, 0) = landmarks[i].x;
+			landmarks_mat.at<float>(i + landmarks.size(), 0) = landmarks[i].y;
 		}
 
 		//(captured_image, face_model.detected_landmarks, face_model.detection_success, sequence_reader.time_stamp, sequence_reader.IsWebcam());
 
-		face_analyser->AddNextFrame(frame->Mat, landmarks_mat, success, 0, online);
+		face_analyser->AddNextFrame(frame, landmarks_mat, success, 0, online);
 
 		cv::Mat_<double> hog_d;
 		face_analyser->GetLatestHOG(hog_d, *num_rows, *num_cols);
 		hog_d.convertTo(*hog_features, CV_32F);
 		
 		face_analyser->GetLatestAlignedFace(*aligned_face);
-				
 	}*/
 	
 	// Predicting AUs from a single image
