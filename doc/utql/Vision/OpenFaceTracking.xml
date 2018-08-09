@@ -16,11 +16,23 @@
 			<Node name="Camera" displayName="Camera" />
 			<Node name="ImagePlane" displayName="Image Plane" />
 			
-			<Edge name="ImageInput" source="Camera"	destination="ImagePlane" displayName="Image Input">
+			<Edge name="ImageInput" source="Camera"	destination="ImagePlane" displayName="Image Input Color">
 				<Description>
 					
 				</Description>				
-				<Predicate>type=='Image'&amp;&amp;mode=='push'</Predicate>
+				<Predicate>type=='Image'</Predicate>
+			</Edge>
+			<Edge name="ImageInputGray" source="Camera"	destination="ImagePlane" displayName="Image Input Gray">
+				<Description>
+					
+				</Description>				
+				<Predicate>type=='Image'</Predicate>
+			</Edge>
+			<Edge name="Intrinsics" source="Camera"	destination="ImagePlane" displayName="Intrinsics">
+				<Description>
+					
+				</Description>				
+				<Predicate>type=='3x3Matrix'&amp;&amp;mode=='pull'</Predicate>
 			</Edge>
 		</Input>
 		<Output>
@@ -35,12 +47,20 @@
 			</Edge>			
 		</Output>
 
+		<Constraints>
+        	<TriggerGroup>
+                <Edge edge-ref="ImageInput"/>
+                <Edge edge-ref="ImageInputGray"/>
+                <Edge edge-ref="Output"/>
+            </TriggerGroup>
+        </Constraints>
+
 		<DataflowConfiguration>
 			<UbitrackLib class="OpenFaceTracking" />
 
-            <Attribute name="modelDirectory" default="build/install" displayName="Model Directory" xsi:type="PathAttributeDeclarationType">
+            <Attribute name="modelFile" default="build/install" displayName="Model File" xsi:type="PathAttributeDeclarationType">
                 <Description>
-                	<h:p>Required: Path to the model directory, which contains <h:code>/model/main_ceclm_general.txt</h:code> and other model files.</h:p>
+                	<h:p>Required: Path and file name of the model file such as <h:code>/model/main_ceclm_general.txt</h:code> or <h:code>/model/main_clm_general.txt</h:code>.</h:p>
                	</Description>
             </Attribute>
 		</DataflowConfiguration>

@@ -53,6 +53,9 @@
 #include <opencv/cv.h>
 #include <utVision/Image.h>
 #include <utVision/Undistortion.h>
+#include <utDataflow/TriggerComponent.h>
+#include <utDataflow/TriggerInPort.h>
+#include <utDataflow/TriggerOutPort.h>
 
 #define _USE_MATH_DEFINES
 #include <math.h>
@@ -88,7 +91,7 @@ namespace Ubitrack { namespace Drivers {
  *
  */
 class OpenFaceTracking
-	: public Dataflow::Component
+	: public Dataflow::TriggerComponent
 {
 public:
 
@@ -104,94 +107,65 @@ public:
 	/** stops the camera */
 	void stop();
 
+	void compute(Measurement::Timestamp t);
+
 protected:
 	
 	// the ports
-	Dataflow::PushConsumer< Measurement::ImageMeasurement > m_inPort;
-
-	Dataflow::PushSupplier< Measurement::Pose > m_outPort;
-	
-	void newImage(Measurement::ImageMeasurement imageRGB);
+	Dataflow::TriggerInPort< Measurement::ImageMeasurement > m_inPortColor;
+	Dataflow::TriggerInPort< Measurement::ImageMeasurement > m_inPortGray;
+	Dataflow::PullConsumer< Measurement::Matrix3x3 > m_inIntrinsics;
+	Dataflow::PushSupplier< Measurement::ImageMeasurement > m_debugPort;
+	Dataflow::TriggerOutPort< Measurement::Pose > m_outPort;
 
 private:
 
-	int * track_stat;
-
-   bool m_DetectorHaar = false;
-   bool m_DetectorHOG = false;
-   bool m_DetectorCNN = true;
-   bool m_DynamicAUModels = true;
-   int m_image_output_size = 112;
-   bool m_MaskAligned = true;
-   FaceModelParameters * m_face_model_params;
-   FaceDetector * m_face_detector;
-   CLNF * m_landmark_detector;
-   FaceAnalyserManaged * m_face_analyser;
+   LandmarkDetector::FaceModelParameters m_det_parameters;
+   LandmarkDetector::CLNF * m_face_model;
 
    // perform OpenFace head pose estimation
-   // source code ported from OpenFace/gui/OpenFaceOffline/MainWindow.xaml.cs
-   double estimateHeadPose(cv::Vec6f & pose, Measurement::ImageMeasurement imageRGB);
-
-   // perform OpenFace head pose estimation
-   // source code ported from OpenFace/gui/OpenFaceOffline/MainWindow.xaml.cs ProcessSequence
-   double estimateHeadPose2(cv::Vec6f & pose, Measurement::ImageMeasurement imageRGB);
+   // source code ported from OpenFace/exe/FaceLandmarkVid
+   double estimateHeadPose(cv::Vec6d & pose, cv::Mat & image, cv::Mat & imageGray, Measurement::Matrix3x3 intrinsics);
 
    // convert from ubitrack enum to visage enum (for image pixel format)
-   void OpenFaceTracking::printPixelFormat(Measurement::ImageMeasurement imageRGB);
+   void OpenFaceTracking::printPixelFormat(Measurement::ImageMeasurement image);
+
 };
 
 
 OpenFaceTracking::OpenFaceTracking( const std::string& sName, boost::shared_ptr< Graph::UTQLSubgraph > subgraph )
-	: Dataflow::Component( sName )	
-	, m_outPort( "Output", *this )
-	, m_inPort( "ImageInput", *this, boost::bind(&OpenFaceTracking::newImage, this, _1))
+	: Dataflow::TriggerComponent(sName, subgraph)
+	, m_outPort("Output", *this)
+	, m_inPortColor("ImageInput", *this)
+	, m_inPortGray("ImageInputGray", *this)
+	, m_inIntrinsics("Intrinsics", *this)
+	, m_debugPort("DebugOutput", *this)
 {
-	LOG4CPP_INFO(logger, "enter OpenFaceTracking::OpenFaceTracking");
-   if (subgraph->m_DataflowAttributes.hasAttribute("modelDirectory"))
+   if (subgraph->m_DataflowAttributes.hasAttribute("modelFile"))
    {
-      std::string modelDir = subgraph->m_DataflowAttributes.getAttributeString("modelDirectory");
-	  //modelDir = "C:/libraries/JoeSRG/";
-	  LOG4CPP_INFO(logger, "Model Directory: " << modelDir);
+      std::string modelDir = subgraph->m_DataflowAttributes.getAttributeString("modelFile");
+	  LOG4CPP_INFO(logger, "Model File: " << modelDir);
 
-      //m_face_model_params = new FaceModelParameters();
-      m_face_model_params = new FaceModelParameters(modelDir, true, false, false);
-
-      m_face_detector = new FaceDetector(m_face_model_params->GetHaarLocation(), m_face_model_params->GetMTCNNLocation());
-
-      // If MTCNN model not available, use HOG
-      if (!m_face_detector->IsMTCNNLoaded())
-      {
-         m_DetectorCNN = false;
-         m_DetectorHOG = true;
-      }
-      m_face_model_params->SetFaceDetector(m_DetectorHaar, m_DetectorHOG, m_DetectorCNN);
-	  m_face_model_params->optimiseForVideo();
-
-      m_landmark_detector = new CLNF(*m_face_model_params);
-	  if (!m_landmark_detector->isLoaded())
+	  m_face_model = new LandmarkDetector::CLNF(modelDir);
+	  if (!m_face_model->loaded_successfully)
 	  {
 		  std::ostringstream os;
-		  os << "OpenFace landmark detector failed loading!";
+		  os << "OpenFace landmark detector failed loading! " << modelDir;
 		  UBITRACK_THROW(os.str());
 	  }
-
-      //m_face_analyser = new FaceAnalyserManaged(modelDir, m_DynamicAUModels, m_image_output_size, m_MaskAligned);
-
-	  m_landmark_detector->Reset();
    }
    else 
    {
       std::ostringstream os;
-      os << "OpenFace Model Directory is required, but was not provided!";
+      os << "OpenFace Model File is required, but was not provided!";
       UBITRACK_THROW(os.str());
    }
-   LOG4CPP_INFO(logger, "exit OpenFaceTracking::OpenFaceTracking");
 }
 
-void OpenFaceTracking::printPixelFormat(Measurement::ImageMeasurement imageRGB)
+void OpenFaceTracking::printPixelFormat(Measurement::ImageMeasurement image)
 {
    using Ubitrack::Vision::Image;
-   switch (imageRGB->pixelFormat())
+   switch (image->pixelFormat())
    {
    case Image::LUMINANCE:
 	   LOG4CPP_INFO(logger, "Image::LUMINANCE");
@@ -228,116 +202,86 @@ void OpenFaceTracking::printPixelFormat(Measurement::ImageMeasurement imageRGB)
    }
 }
 
-
-void OpenFaceTracking::newImage(Measurement::ImageMeasurement imageRGB)
+void OpenFaceTracking::compute(Measurement::Timestamp t)
 {
-   //printPixelFormat(imageRGB);
-   {
-      cv::Mat dest;
-	  int origin = imageRGB->origin();
-	  if (origin == 0) {
-		  dest = imageRGB->Mat();
-	  }
-	  else {
-          // the direct show image is flipped 180 degrees
-		  cv::rotate(imageRGB->Mat(), dest, cv::RotateFlags::ROTATE_180);
-		  //cv::flip(imageRGB->Mat(), dest, 0);
-	  }
+	//printPixelFormat(imageRGB);
 
-      // pass the image to OpenFace
-      cv::Vec6f pose;
-      double confidence = estimateHeadPose2(pose, imageRGB);
-	  float tx = pose[0] / 1000.0f;
-	  float ty = pose[1] / 1000.0f;
-	  float tz = pose[2] / 1000.0f;
+	Measurement::ImageMeasurement imageRGB = m_inPortColor.get();
+	Measurement::ImageMeasurement imageGray = m_inPortGray.get();
+	Measurement::Matrix3x3 intrinsics = m_inIntrinsics.get(t);
 
-      if (confidence > 0.0f)
-      {
-		  LOG4CPP_INFO(logger, "Tracking Confidence: " << confidence);
-		  LOG4CPP_INFO(logger, "Head Translation X Y Z: " << tx << " " << ty << " " << tz);
-		  LOG4CPP_INFO(logger, "Head Rotation X Y Z:  " << pose[3] << " " << pose[4] << " " << pose[5]);
-      }
-     
-     // output head pose
-      Math::Quaternion headRot = Math::Quaternion(-pose[5], -pose[4], pose[3]);
-      Math::Vector3d headTrans = Math::Vector3d(tx, ty, -tz);
-      Math::Pose headPose = Math::Pose(headRot, headTrans);
-      Measurement::Pose meaHeadPose = Measurement::Pose(imageRGB.time(), headPose);
-      m_outPort.send(meaHeadPose);
-   }
-}
-
-double OpenFaceTracking::estimateHeadPose2(cv::Vec6f & pose, Measurement::ImageMeasurement imageRGB)
-{
-	float confidence = 0.0f;
-
-	bool detection_succeeding = m_landmark_detector->DetectLandmarksInVideo(imageRGB->Mat(), *m_face_model_params, imageRGB->getGrayscale()->Mat());
-	if (detection_succeeding)
-	{
-		// The face analysis step (for AUs and eye gaze)
-		//m_face_analyser->AddNextFrame(imageRGB->Mat(), m_landmark_detector->CalculateAllLandmarks(), detection_succeeding, false);
-
-		// Only the final face will contain the details
-		//VisualizeFeatures(frame, visualizer_of, landmarks, landmark_detector.GetVisibilities(), detection_succeeding, i == 0, true, reader.GetFx(), reader.GetFy(), reader.GetCx(), reader.GetCy(), progress);
-		//intrisics for LogiC615_5
-		float fx = 835.048;
-		float fy = 833.865;
-		float cx = 413.057;
-		float cy = 290.567;
-		m_landmark_detector->GetPose(pose, fx, fy, cx, cy);
-		confidence = m_landmark_detector->GetConfidence();
+	cv::Mat destColor, destGray;
+	cv::Mat & imgColor = destColor;
+	cv::Mat & imgGray = destGray;
+	if (imageRGB->origin() == 0) {
+		imgColor = imageRGB->Mat();
+		imgGray = imageGray->Mat();
+	}
+	else {
+		// the direct show image is rotated 180 degrees
+		cv::flip(imageRGB->Mat(), destColor, 0);
+		cv::flip(imageGray->Mat(), destGray, 0);
 	}
 
-	return confidence;
+	//cv::imshow("newImage imgRGB", imgRGB);
+	//cv::imshow("newImage imgGray", imgGray);
+	//cv::waitKey(1);
+
+	// pass the image to OpenFace
+	cv::Vec6d pose;
+	double confidence = estimateHeadPose(pose, imgColor, imgGray, intrinsics);
+	float tx = pose[0] / 1000.0f;
+	float ty = pose[1] / 1000.0f;
+	float tz = pose[2] / 1000.0f;
+
+	if (confidence > 0.0f)
+	{
+		LOG4CPP_INFO(logger, "Tracking Confidence: " << confidence);
+		LOG4CPP_INFO(logger, "Head Translation X Y Z: " << tx << " " << ty << " " << tz);
+		LOG4CPP_INFO(logger, "Head Rotation X Y Z:  " << pose[3] << " " << pose[4] << " " << pose[5]);
+	}
+
+	// output head pose
+	Math::Quaternion headRot = Math::Quaternion(-pose[5], -pose[4], pose[3]);
+	Math::Vector3d headTrans = Math::Vector3d(tx, -ty, -tz);
+	Math::Pose headPose = Math::Pose(headRot, headTrans);
+	Measurement::Pose meaHeadPose = Measurement::Pose(imageRGB.time(), headPose);
+	m_outPort.send(meaHeadPose);
 }
 
-double OpenFaceTracking::estimateHeadPose(cv::Vec6f & pose, Measurement::ImageMeasurement imageRGB)
+double OpenFaceTracking::estimateHeadPose(cv::Vec6d & pose, cv::Mat & imageColor, cv::Mat & imageGray, Measurement::Matrix3x3 intrinsics)
 {
-   // Detect faces here and return bounding boxes
-   vector<cv::Rect_<float>> face_detections;
-   vector<float> confidences;
-   float confidence = 0.0f;
-   if (m_DetectorHOG)
-   {
-      m_face_detector->DetectFacesHOG(face_detections, imageRGB->getGrayscale()->Mat(), confidences);
-   }
-   else if (m_DetectorCNN)
-   {
-      m_face_detector->DetectFacesMTCNN(face_detections, imageRGB->Mat(), confidences);
-   }
-   else if (m_DetectorHaar)
-   {
-      m_face_detector->DetectFacesHaar(face_detections, imageRGB->getGrayscale()->Mat(), confidences);
-   }
+	//cv::imshow("estimateHeadPose3 image", imageRGB);
+	//cv::waitKey(1);
 
-   if (!face_detections.empty())
-   {
-      bool detection_succeeding = m_landmark_detector->DetectFaceLandmarksInImage(imageRGB->Mat(), face_detections[0], *m_face_model_params, imageRGB->getGrayscale()->Mat());
+	// The actual facial landmark detection / tracking
+	bool detection_success = false;
+	if (m_face_model->detection_certainty > 0.7) {
+		detection_success = LandmarkDetector::DetectLandmarksInVideo(imageColor, m_face_model->GetBoundingBox(), *m_face_model, m_det_parameters, imageGray);
+	}
+	else {
+		detection_success = LandmarkDetector::DetectLandmarksInVideo(imageColor, *m_face_model, m_det_parameters, imageGray);
+	}
+		
 
-      auto landmarks = m_landmark_detector->CalculateAllLandmarks();
+	double confidence = 0.0;
+	if (detection_success)
+	{
+		float fx = (*intrinsics)(0, 0);
+		float fy = (*intrinsics)(1, 1);
+		float cx = -(*intrinsics)(0, 2);
+		float cy = -(*intrinsics)(1, 2);
 
-      // Predict action units
-	  //auto au_preds = m_face_analyser->PredictStaticAUsAndComputeFeatures(imageRGB->Mat(), landmarks);
-
-      // Only the final face will contain the details
-      //VisualizeFeatures(frame, visualizer_of, landmarks, landmark_detector.GetVisibilities(), detection_succeeding, i == 0, true, reader.GetFx(), reader.GetFy(), reader.GetCx(), reader.GetCy(), progress);
-	  //intrisics for LogiC615_5
-	  float fx = 835.048;
-	  float fy = 833.865;
-	  float cx = 413.057;
-	  float cy = 290.567;
-	  m_landmark_detector->GetPose(pose, fx, fy, cx, cy);
-	  confidence = m_landmark_detector->GetConfidence();
-   }
-
-   return confidence;
+		// Work out the pose of the head from the tracked model
+		pose = LandmarkDetector::GetPose(*m_face_model, fx, fy, cx, cy);
+		confidence = m_face_model->detection_certainty;
+	}
+	return confidence;
 }
 
 OpenFaceTracking::~OpenFaceTracking()
 {
-   delete m_landmark_detector;
-   delete m_face_detector;
-   delete m_face_model_params;
+   delete m_face_model;
 }
 
 
