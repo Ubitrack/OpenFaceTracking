@@ -244,11 +244,9 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 	Measurement::Matrix3x3 intrinsics = m_inIntrinsics.get(t);
 
 	cv::Mat destColor, destGray;
-	cv::Mat & imgColor = destColor;
-	cv::Mat & imgGray = destGray;
 	if (imageRGB->origin() == 0) {
-		imgColor = imageRGB->Mat();
-		imgGray = imageGray->Mat();
+		destColor = imageRGB->Mat();
+		destGray = imageGray->Mat();
 	}
 	else {
 		// the input image is flipped vertically
@@ -259,7 +257,7 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 
 	// pass the image to OpenFace
 	cv::Vec6d pose;
-	double confidence = estimateHeadPose(pose, imgColor, imgGray, intrinsics);
+	double confidence = estimateHeadPose(pose, destColor, destGray, intrinsics);
 	float tx = pose[0] / 1000.0f;
 	float ty = pose[1] / 1000.0f;
 	float tz = pose[2] / 1000.0f;
@@ -269,6 +267,15 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 		LOG4CPP_INFO(logger, "Tracking Confidence: " << confidence);
 		LOG4CPP_INFO(logger, "Head Translation X Y Z: " << tx << " " << ty << " " << tz);
 		LOG4CPP_INFO(logger, "Head Rotation X Y Z:  " << pose[3] << " " << pose[4] << " " << pose[5]);
+
+		// convert 2D OpenFace landmark points to 2D Ubitrack points
+		int numPoints = m_face_model->detected_landmarks.rows / 2;
+		std::vector<Math::Vector2d> points;
+		for (int i = 0; i < numPoints; ++i)
+		{
+			Math::Vector2d point(m_face_model->detected_landmarks.at<float>(i), m_face_model->detected_landmarks.at<float>(i + numPoints));
+			points.push_back(point);
+		}
 	}
 
 	// output head pose
