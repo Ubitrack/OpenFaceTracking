@@ -46,8 +46,7 @@ set(OpenFace_INCLUDE_DIRS
 	${OpenFace_INCLUDE_BASE}/local/Utilities/include
 	${OpenFace_INCLUDE_BASE}/3rdParty/OpenBLAS/include
 	${OpenFace_INCLUDE_BASE}/3rdParty/dlib/include
-	#${OpenFace_INCLUDE_BASE}/3rdParty/tbb/include
-	C:/libraries/Ubitrack_libs/vs2015-64/tbb/include
+	${UT_EXTERNAL_LIBRARIES_DIR}/vs2015-64/tbb/include
 )
 message(STATUS "OpenFace_INCLUDE_DIRS: ${OpenFace_INCLUDE_DIRS}")
 	
@@ -78,8 +77,7 @@ if(WIN32)
 	)
 	find_library(OpenFace_TBB_LIB
 	  NAMES tbb
-	  #PATHS ${OpenFace_ROOT_DIR}/lib/3rdParty/tbb/lib/x64/v140
-	  PATHS C:/libraries/Ubitrack_libs/vs2015-64/tbb/lib/intel64/vc12
+	  PATHS ${UT_EXTERNAL_LIBRARIES_DIR}/vs2015-64/tbb/lib/intel64/vc12
 	)
 else()
 	find_library(OpenFace_FaceAnalyser_LIB
