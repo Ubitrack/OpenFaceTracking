@@ -121,9 +121,9 @@ private:
 
    LandmarkDetector::FaceModelParameters m_det_parameters;
    LandmarkDetector::CLNF * m_face_model;
-   Util::BlockTimer timerDetectLandmarksInVideo;
-   Util::BlockTimer timerGetPose;
-   Util::BlockTimer timerGetShape;
+   Util::BlockTimer m_timerDetectLandmarksInVideo;
+   Util::BlockTimer m_timerGetPose;
+   Util::BlockTimer m_timerGetShape;
 
    // convert from ubitrack enum to visage enum (for image pixel format)
    void printPixelFormat(Measurement::ImageMeasurement image);
@@ -140,9 +140,9 @@ OpenFaceTracking::OpenFaceTracking( const std::string& sName, boost::shared_ptr<
 	, m_inPortGray("ImageInputGray", *this)
 	, m_inIntrinsics("Intrinsics", *this)
 	, m_debugPort("DebugOutput", *this)
-	, timerDetectLandmarksInVideo("OpenFaceTracking.DetectLandmarksInVideo", logger)
-	, timerGetPose("OpenFaceTracking.GetPose", logger)
-	, timerGetShape("OpenFaceTracking.GetShape", logger)
+	, m_timerDetectLandmarksInVideo("OpenFaceTracking.DetectLandmarksInVideo", logger)
+	, m_timerGetPose("OpenFaceTracking.GetPose", logger)
+	, m_timerGetShape("OpenFaceTracking.GetShape", logger)
 {
    if (subgraph->m_DataflowAttributes.hasAttribute("modelFile"))
    {
@@ -282,7 +282,7 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 	// source code ported from OpenFace/exe/FaceLandmarkVid
 	bool detection_success = false;
 	{
-		UBITRACK_TIME(timerDetectLandmarksInVideo);
+		UBITRACK_TIME(m_timerDetectLandmarksInVideo);
 		if (m_face_model->detection_certainty > 0.7) {
 			detection_success = LandmarkDetector::DetectLandmarksInVideo(destColor, m_face_model->GetBoundingBox(), *m_face_model, m_det_parameters, destGray);
 		}
@@ -295,14 +295,14 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 	{
 		// Work out the pose of the head from the tracked model
 		{
-			UBITRACK_TIME(timerGetPose);
+			UBITRACK_TIME(m_timerGetPose);
 			pose = LandmarkDetector::GetPose(*m_face_model, fx, fy, cx, cy);
 		}
 
 		// set head position to average of left+right inner eye landmarks
 		cv::Mat_<float> shape;
 		{
-			UBITRACK_TIME(timerGetShape);
+			UBITRACK_TIME(m_timerGetShape);
 			shape = m_face_model->GetShape(fx, fy, cx, cy);
 		}
 		pose[0] = (shape.at<float>(0, 42) + shape.at<float>(0, 39)) / 2.0f;
