@@ -60,16 +60,10 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 
-//#include <LandmarkCoreIncludes.h>
-#include "LandmarkDetectorInterop.h"
-#include "FaceDetectorInterop.h"
-#include "FaceAnalyserInterop.h"
+#include <LandmarkCoreIncludes.h>
 
 using namespace Ubitrack;
 using namespace Ubitrack::Vision;
-using namespace LandmarkDetectorInterop;
-using namespace FaceDetectorInterop;
-using namespace FaceAnalyserInterop;
 
 namespace Ubitrack { namespace Drivers {
 
@@ -128,7 +122,9 @@ private:
    double estimateHeadPose(cv::Vec6d & pose, cv::Mat & image, cv::Mat & imageGray, Measurement::Matrix3x3 intrinsics);
 
    // convert from ubitrack enum to visage enum (for image pixel format)
-   void OpenFaceTracking::printPixelFormat(Measurement::ImageMeasurement image);
+   void printPixelFormat(Measurement::ImageMeasurement image);
+
+   void optimiseForVideo();
 
 };
 
@@ -153,6 +149,8 @@ OpenFaceTracking::OpenFaceTracking( const std::string& sName, boost::shared_ptr<
 		  os << "OpenFace landmark detector failed loading! " << modelDir;
 		  UBITRACK_THROW(os.str());
 	  }
+
+	  optimiseForVideo();
    }
    else 
    {
@@ -202,6 +200,41 @@ void OpenFaceTracking::printPixelFormat(Measurement::ImageMeasurement image)
    }
 }
 
+void OpenFaceTracking::optimiseForVideo()
+{
+	m_det_parameters.window_sizes_small = vector<int>(4);
+	m_det_parameters.window_sizes_init = vector<int>(4);
+
+	// For fast tracking
+	m_det_parameters.window_sizes_small[0] = 0;
+	m_det_parameters.window_sizes_small[1] = 9;
+	m_det_parameters.window_sizes_small[2] = 7;
+	m_det_parameters.window_sizes_small[3] = 0;
+
+	// Just for initialisation
+	m_det_parameters.window_sizes_init.at(0) = 11;
+	m_det_parameters.window_sizes_init.at(1) = 9;
+	m_det_parameters.window_sizes_init.at(2) = 7;
+	m_det_parameters.window_sizes_init.at(3) = 5;
+
+	// For first frame use the initialisation
+	m_det_parameters.window_sizes_current = m_det_parameters.window_sizes_init;
+
+	m_det_parameters.multi_view = false;
+	m_det_parameters.num_optimisation_iteration = 5;
+
+	m_det_parameters.sigma = 1.5;
+	m_det_parameters.reg_factor = 25;
+	m_det_parameters.weight_factor = 0;
+
+	// Parameter optimizations for CE-CLM
+	if (m_det_parameters.curr_landmark_detector == ::LandmarkDetector::FaceModelParameters::CECLM_DETECTOR)
+	{
+		m_det_parameters.sigma = 1.5f * m_det_parameters.sigma;
+		m_det_parameters.reg_factor = 0.9f * m_det_parameters.reg_factor;
+	}
+}
+
 void OpenFaceTracking::compute(Measurement::Timestamp t)
 {
 	//printPixelFormat(imageRGB);
@@ -218,14 +251,11 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 		imgGray = imageGray->Mat();
 	}
 	else {
-		// the direct show image is rotated 180 degrees
+		// the input image is flipped vertically
 		cv::flip(imageRGB->Mat(), destColor, 0);
 		cv::flip(imageGray->Mat(), destGray, 0);
+		LOG4CPP_WARN(logger, "Input image is flipped. Consider flipping in the driver to improve performance.");
 	}
-
-	//cv::imshow("newImage imgRGB", imgRGB);
-	//cv::imshow("newImage imgGray", imgGray);
-	//cv::waitKey(1);
 
 	// pass the image to OpenFace
 	cv::Vec6d pose;
@@ -251,7 +281,9 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 
 double OpenFaceTracking::estimateHeadPose(cv::Vec6d & pose, cv::Mat & imageColor, cv::Mat & imageGray, Measurement::Matrix3x3 intrinsics)
 {
-	//cv::imshow("estimateHeadPose3 image", imageRGB);
+	// for debugging
+	//cv::imshow("estimateHeadPose imageColor", imageColor);
+	//cv::imshow("estimateHeadPose imageGray", imageGray);
 	//cv::waitKey(1);
 
 	// The actual facial landmark detection / tracking
