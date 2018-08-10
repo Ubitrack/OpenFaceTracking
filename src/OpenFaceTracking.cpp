@@ -267,15 +267,6 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 		LOG4CPP_INFO(logger, "Tracking Confidence: " << confidence);
 		LOG4CPP_INFO(logger, "Head Translation X Y Z: " << tx << " " << ty << " " << tz);
 		LOG4CPP_INFO(logger, "Head Rotation X Y Z:  " << pose[3] << " " << pose[4] << " " << pose[5]);
-
-		// convert 2D OpenFace landmark points to 2D Ubitrack points
-		int numPoints = m_face_model->detected_landmarks.rows / 2;
-		std::vector<Math::Vector2d> points;
-		for (int i = 0; i < numPoints; ++i)
-		{
-			Math::Vector2d point(m_face_model->detected_landmarks.at<float>(i), m_face_model->detected_landmarks.at<float>(i + numPoints));
-			points.push_back(point);
-		}
 	}
 
 	// output head pose
@@ -314,6 +305,24 @@ double OpenFaceTracking::estimateHeadPose(cv::Vec6d & pose, cv::Mat & imageColor
 		// Work out the pose of the head from the tracked model
 		pose = LandmarkDetector::GetPose(*m_face_model, fx, fy, cx, cy);
 		confidence = m_face_model->detection_certainty;
+
+		// convert 2D OpenFace landmark points to 2D Ubitrack points
+		int numPoints = m_face_model->detected_landmarks.rows / 2;
+		std::vector<Math::Vector2d> points2d;
+		for (int i = 0; i < numPoints; ++i)
+		{
+			Math::Vector2d point(m_face_model->detected_landmarks.at<float>(i), m_face_model->detected_landmarks.at<float>(i + numPoints));
+			points2d.push_back(point);
+		}
+
+		// convert 3D OpenFace landmark points to 3D Ubitrack points
+		cv::Mat_<float> shape = m_face_model->GetShape(fx, fy, cx, cy);
+		std::vector<Math::Vector3d> points3d;
+		for (int i = 0; i < shape.cols; ++i)
+		{
+			Math::Vector3d point(shape.at<float>(0, i), -shape.at<float>(1, i), -shape.at<float>(2, i));
+			points3d.push_back(point);
+		}
 	}
 	return confidence;
 }
