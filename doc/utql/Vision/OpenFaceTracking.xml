@@ -42,16 +42,31 @@
 				<Description>
 					
 				</Description>
-				<Attribute name="type" value="6D" xsi:type="EnumAttributeReferenceType"/>
-				<Attribute name="mode" value="push" xsi:type="EnumAttributeReferenceType"/>
-			</Edge>			
+				<Attribute name="type" value="6D" xsi:type="EnumAttributeReferenceType"/>								
+			</Edge>	
+			<Edge name="OutputError" source="Camera" destination="Head" displayName="Head Error Pose">
+				<Description>
+					
+				</Description>
+				<Attribute name="type" value="6DError" xsi:type="EnumAttributeReferenceType"/>				
+				<Attribute name="mode" value="push" xsi:type="EnumAttributeReferenceType"/>		
+			</Edge>
+			<Edge name="DebugImage" source="Camera" destination="ImagePlane" displayName="DebugImage">
+				<Description>
+					
+				</Description>
+				<Attribute name="type" value="Image" xsi:type="EnumAttributeReferenceType"/>								
+				<Attribute name="mode" value="push" xsi:type="EnumAttributeReferenceType"/>				
+			</Edge>				
 		</Output>
 
 		<Constraints>
         	<TriggerGroup>
                 <Edge edge-ref="ImageInput"/>
                 <Edge edge-ref="ImageInputGray"/>
-                <Edge edge-ref="Output"/>
+				<Edge edge-ref="Output"/>
+
+    
             </TriggerGroup>
         </Constraints>
 
