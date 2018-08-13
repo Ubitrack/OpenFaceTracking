@@ -456,17 +456,13 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 			m_outErrorPort.send(Measurement::ErrorPose(t, Math::ErrorPose(headPose, covar)));
 
 		
-		
-			
 		}
-
-		
-
-
-		
-		
-		
 	}
+	else if (m_debugPort.isConnected()) {
+		// must still send debug image if face is not detected
+		m_debugPort.send(Measurement::ImageMeasurement(t, imageColor->Clone()));
+	}
+
 }
 
 OpenFaceTracking::~OpenFaceTracking()
