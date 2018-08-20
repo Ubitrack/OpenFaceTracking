@@ -189,6 +189,15 @@
 					<h:p>maxDelay in ms</h:p>
 				</Description>
 			</Attribute>
+            <Attribute name="addErrorX" displayName="x-axis additional error" default="0" min="0" xsi:type="DoubleAttributeDeclarationType">
+                <Description><h:p>Square root of the x-axis covariance that will be added to error pose.</h:p></Description>
+            </Attribute>
+            <Attribute name="addErrorY" displayName="y-axis additional error" default="0" min="0" xsi:type="DoubleAttributeDeclarationType">
+                <Description><h:p>Square root of the y-axis covariance that will be added to error pose.</h:p></Description>
+            </Attribute>
+            <Attribute name="addErrorY" displayName="z-axis additional error" default="0" min="0" xsi:type="DoubleAttributeDeclarationType">
+                <Description><h:p>Square root of the z-axis covariance that will be added to error pose.</h:p></Description>
+            </Attribute>
 		</DataflowConfiguration>
 	</Pattern>
 

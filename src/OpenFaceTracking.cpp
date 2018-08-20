@@ -142,7 +142,12 @@ private:
    int m_imageHeight;
    int m_imageWidth;
 
-   // convert from ubitrack enum to visage enum (for image pixel format)
+	// additional covariance
+	double m_addErrorX;
+	double m_addErrorY;
+	double m_addErrorZ;
+
+	// convert from ubitrack enum to visage enum (for image pixel format)
    void printPixelFormat(Measurement::ImageMeasurement image);
 
    void optimiseForVideo();
@@ -167,6 +172,9 @@ OpenFaceTracking::OpenFaceTracking( const std::string& sName, boost::shared_ptr<
 	, m_isTracking(false)
 	, m_minLikelihood(-5)
 	, m_maxDelay(30)
+	, m_addErrorX(0.0)
+	, m_addErrorY(0.0)
+	, m_addErrorZ(0.0)
 {
 	subgraph->m_DataflowAttributes.getAttributeData("minLikelihood", m_minLikelihood);
 	subgraph->m_DataflowAttributes.getAttributeData("maxDelay", m_maxDelay);
@@ -185,6 +193,10 @@ OpenFaceTracking::OpenFaceTracking( const std::string& sName, boost::shared_ptr<
 	  }
 
 	  optimiseForVideo();
+
+	  subgraph->m_DataflowAttributes.getAttributeData("addErrorX", m_addErrorX);
+	  subgraph->m_DataflowAttributes.getAttributeData("addErrorY", m_addErrorY);
+	  subgraph->m_DataflowAttributes.getAttributeData("addErrorZ", m_addErrorZ);
    }
    else 
    {
@@ -501,18 +513,10 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 			headTrans = Math::Vector3d(txe, tye, tze);
 
 			headPose = Math::Pose(headRot, headTrans );
-/*
-			double addErrorX = 0.02;
-			double addErrorY = 0.02;
-			double addErrorZ = 0.05;*/
 
-			double addErrorX = 0.0;
-			double addErrorY = 0.0;
-			double addErrorZ = 0.0;
-
-			covar(0, 0) += addErrorX * addErrorX;
-			covar(1, 1) += addErrorY * addErrorY;
-			covar(2, 2) += addErrorZ * addErrorZ;
+			covar(0, 0) += m_addErrorX * m_addErrorX;
+			covar(1, 1) += m_addErrorY * m_addErrorY;
+			covar(2, 2) += m_addErrorZ * m_addErrorZ;
 
 
 			Measurement::Pose meaHeadPose = Measurement::Pose(imageColor.time(), headPose);
