@@ -116,9 +116,14 @@ protected:
 	Dataflow::TriggerInPort< Measurement::ImageMeasurement > m_inPortColor;
 	Dataflow::TriggerInPort< Measurement::ImageMeasurement > m_inPortGray;
 	Dataflow::PullConsumer< Measurement::Matrix3x3 > m_inIntrinsics;
+	Dataflow::PushConsumer< Measurement::Button> m_eventIn;
+	Dataflow::PullConsumer<Measurement::Pose> m_referenceHead;
+
 	Dataflow::PushSupplier< Measurement::ImageMeasurement > m_debugPort;
 	Dataflow::TriggerOutPort< Measurement::Pose > m_outPort;
 	Dataflow::PushSupplier< Measurement::ErrorPose > m_outErrorPort;
+
+	void buttonEvent(Measurement::Button e);
 
 private:
 
@@ -132,11 +137,17 @@ private:
    Math::Vector3d m_head2Eye;
    int m_initCount = 0;
 
+   double m_minLikelihood;
+   int m_maxDelay;
+   int m_imageHeight;
+   int m_imageWidth;
+
    // convert from ubitrack enum to visage enum (for image pixel format)
    void printPixelFormat(Measurement::ImageMeasurement image);
 
    void optimiseForVideo();
 
+   void resetTracker(Measurement::Timestamp t);
 };
 
 
@@ -147,12 +158,19 @@ OpenFaceTracking::OpenFaceTracking( const std::string& sName, boost::shared_ptr<
 	, m_inPortColor("ImageInput", *this)
 	, m_inPortGray("ImageInputGray", *this)
 	, m_inIntrinsics("Intrinsics", *this)
+	, m_referenceHead("RefCam2Head", *this)
+	, m_eventIn("EventIn", *this, boost::bind(&OpenFaceTracking::buttonEvent, this, _1))
 	, m_debugPort("DebugImage", *this)
 	, m_timerDetectLandmarksInVideo("OpenFaceTracking.DetectLandmarksInVideo", logger)
 	, m_timerAll("OpenFaceTracking.All", logger)	
 	, m_LastDetection_success(false)
 	, m_isTracking(false)
+	, m_minLikelihood(-5)
+	, m_maxDelay(30)
 {
+	subgraph->m_DataflowAttributes.getAttributeData("minLikelihood", m_minLikelihood);
+	subgraph->m_DataflowAttributes.getAttributeData("maxDelay", m_maxDelay);
+
    if (subgraph->m_DataflowAttributes.hasAttribute("modelFile"))
    {
       std::string modelDir = subgraph->m_DataflowAttributes.getAttributeString("modelFile");
@@ -220,6 +238,13 @@ void OpenFaceTracking::optimiseForVideo()
 {
 	m_det_parameters.window_sizes_small = vector<int>(4);
 	m_det_parameters.window_sizes_init = vector<int>(4);
+	
+	m_det_parameters.reinit_video_every = -1;
+	m_det_parameters.limit_pose = true;
+	// default true
+	m_det_parameters.refine_hierarchical = false;
+	// default true
+	m_det_parameters.refine_parameters = false;
 
 	// For fast tracking
 	m_det_parameters.window_sizes_small[0] = 0;
@@ -238,6 +263,12 @@ void OpenFaceTracking::optimiseForVideo()
 
 	m_det_parameters.multi_view = false;
 	m_det_parameters.num_optimisation_iteration = 5;
+
+	
+	// Off by default (as it might lead to some slight inaccuracies in slowly moving faces)
+	//default false
+	m_det_parameters.use_face_template = true;
+	m_det_parameters.face_template_scale = 0.3f;
 
 	m_det_parameters.sigma = 1.5;
 	m_det_parameters.reg_factor = 25;
@@ -259,6 +290,9 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 	Measurement::ImageMeasurement imageColor = m_inPortColor.get();
 	Measurement::ImageMeasurement imageGray = m_inPortGray.get();
 	Measurement::Matrix3x3 intrinsics = m_inIntrinsics.get(t);
+
+	m_imageWidth = imageColor->width();
+	m_imageHeight = imageColor->height();
 
 	float fx = (*intrinsics)(0, 0);
 	float fy = (*intrinsics)(1, 1);
@@ -290,25 +324,36 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 
 	// perform OpenFace head pose estimation
 	// source code ported from OpenFace/exe/FaceLandmarkVid
+	Measurement::Timestamp before;
+	Measurement::Timestamp after;
 	bool detection_success = false;
 	{
-		UBITRACK_TIME(m_timerDetectLandmarksInVideo);
-		//detection_success = LandmarkDetector::DetectLandmarksInVideo(destColor, *m_face_model, m_det_parameters, destGray);
-		if (m_LastDetection_success && m_face_model->detection_certainty > 0.7 && !m_isTracking) {			
-			detection_success = LandmarkDetector::DetectLandmarksInVideo(destColor, *m_face_model, m_det_parameters, destGray);
-			LOG4CPP_INFO(logger, "start tracking");
-			m_isTracking = true;
-		}
-		else {
-			detection_success = LandmarkDetector::DetectLandmarksInVideo(destColor, *m_face_model, m_det_parameters, destGray);
-		}
-		m_LastDetection_success = detection_success;
-		if (!detection_success) {
-			m_isTracking = false;
-		}
+		UBITRACK_TIME(m_timerDetectLandmarksInVideo);				
+		before = Measurement::now();
+		detection_success = LandmarkDetector::DetectLandmarksInVideo(destColor, *m_face_model, m_det_parameters, destGray);
+		after = Measurement::now();		
 	}
+	Measurement::Timestamp diff = (after - before) / 1000000l;
+	if (!m_isTracking) {
+		//LOG4CPP_INFO(logger, "detection: " << detection_success << " in: " << diff << " diffStartToMea " << (before - imageColor.time()) / 1000000l << " diffAfterToMea " << (after - imageColor.time()) / 1000000l);
+	}
+	
 
-	if (detection_success)
+
+	m_LastDetection_success = detection_success;
+
+	if (!detection_success) {
+		m_isTracking = false;
+	}
+	m_isTracking = detection_success;
+
+	if (m_face_model->failures_in_a_row > 3) {
+		resetTracker(imageColor.time());
+	}
+	
+	//LOG4CPP_INFO(logger, "success: " << detection_success <<  " Tracking Confidence: " << m_face_model->detection_certainty << " isTracking: " << m_face_model->tracking_initialised << " scale:" << m_face_model->params_global(0) << " model_likelihood:" << m_face_model->model_likelihood << " failures in row:" << m_face_model->failures_in_a_row);
+	
+	if (detection_success && diff < m_maxDelay && m_face_model->model_likelihood > m_minLikelihood)
 	{
 		// Work out the pose of the head from the tracked model
 		pose = LandmarkDetector::GetPose(*m_face_model, fx, fy, cx, cy);
@@ -328,8 +373,8 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 		Math::Pose headPose = Math::Pose(headRot, headTrans);
 
 		
-
-		//LOG4CPP_INFO(logger, "Tracking Confidence: " << m_face_model->detection_certainty);
+		//m_face_model->detection_certainty;
+		
 		//LOG4CPP_INFO(logger, "Head Translation X Y Z: " << tx << " " << ty << " " << tz);
 		//LOG4CPP_INFO(logger, "Head Rotation X Y Z:  " << pose[3] << " " << pose[4] << " " << pose[5]);
 
@@ -424,31 +469,50 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 			Math::Matrix<double, 6, 6> covar = Algorithm::PoseEstimation2D3D::singleCameraPoseError(headPose, points3d, *intrinsics, residual);
 
 			Math::Vector3d headPos = headPose.translation();
+			
+			cv::Mat_<float> shape = m_face_model->GetShape(fx, fy, cx, cy);
+			
+			//if (m_initCount < 100 && m_face_model->detection_certainty > 0.9) {
+			//	// set head position to average of left+right inner eye landmarks
+			//	
 
-			if (m_initCount < 100 && m_face_model->detection_certainty > 0.9) {
-				// set head position to average of left+right inner eye landmarks
-				cv::Mat_<float> shape = m_face_model->GetShape(fx, fy, cx, cy);
+			//	double txe = (shape.at<float>(0, 42) + shape.at<float>(0, 39)) / 2.0f / 1000.0f;
+			//	double tye = -(shape.at<float>(1, 42) + shape.at<float>(1, 39)) / 2.0f / 1000.0f;
+			//	double tze = -(shape.at<float>(2, 42) + shape.at<float>(2, 39)) / 2.0f / 1000.0f;
+			//	Math::Vector3d eye(txe, tye, tze);
+			//	Math::Pose invHeadPose = ~headPose;
+			//	Math::Vector3d head2eye = invHeadPose*eye;
 
-				double txe = (shape.at<float>(0, 42) + shape.at<float>(0, 39)) / 2.0f / 1000.0f;
-				double tye = -(shape.at<float>(1, 42) + shape.at<float>(1, 39)) / 2.0f / 1000.0f;
-				double tze = -(shape.at<float>(2, 42) + shape.at<float>(2, 39)) / 2.0f / 1000.0f;
-				Math::Vector3d eye(txe, tye, tze);
-				Math::Pose invHeadPose = ~headPose;
-				Math::Vector3d head2eye = invHeadPose*eye;
+			//	if (m_initCount == 0) {
+			//		m_head2Eye = head2eye;
+			//	}
+			//	else {
+			//		const double alpha = 0.05;
+			//		//m_head2Eye = head2eye*alpha + m_head2Eye*(1.0 - alpha);
+			//		m_head2Eye = head2eye;
+			//	}
+			//	m_initCount++;				
+			//	//LOG4CPP_INFO(logger, "m_head2Eye : " << m_head2Eye);
+			//}
 
-				if (m_initCount == 0) {
-					m_head2Eye = head2eye;
-				}
-				else {
-					const double alpha = 0.05;
-					//m_head2Eye = head2eye*alpha + m_head2Eye*(1.0 - alpha);
-					m_head2Eye = head2eye;
-				}
-				m_initCount++;				
-				//LOG4CPP_INFO(logger, "m_head2Eye : " << m_head2Eye);
-			}
+			double txe = (shape.at<float>(0, 42) + shape.at<float>(0, 39)) / 2.0f / 1000.0f;
+			double tye = -(shape.at<float>(1, 42) + shape.at<float>(1, 39)) / 2.0f / 1000.0f;
+			double tze = -(shape.at<float>(2, 42) + shape.at<float>(2, 39)) / 2.0f / 1000.0f;
+			headTrans = Math::Vector3d(txe, tye, tze);
+
 			headPose = Math::Pose(headRot, headTrans );
+/*
+			double addErrorX = 0.02;
+			double addErrorY = 0.02;
+			double addErrorZ = 0.05;*/
 
+			double addErrorX = 0.0;
+			double addErrorY = 0.0;
+			double addErrorZ = 0.0;
+
+			covar(0, 0) += addErrorX * addErrorX;
+			covar(1, 1) += addErrorY * addErrorY;
+			covar(2, 2) += addErrorZ * addErrorZ;
 
 
 			Measurement::Pose meaHeadPose = Measurement::Pose(imageColor.time(), headPose);
@@ -458,11 +522,63 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 		
 		}
 	}
-	else if (m_debugPort.isConnected()) {
+	else {
+		//resetTracker(imageColor.time());
 		// must still send debug image if face is not detected
-		m_debugPort.send(Measurement::ImageMeasurement(t, imageColor->Clone()));
+		if (m_debugPort.isConnected())
+			m_debugPort.send(Measurement::ImageMeasurement(t, imageColor->Clone()));
 	}
 
+}
+
+void OpenFaceTracking::buttonEvent(Measurement::Button e) {
+	if (e->m_value == 'r') {
+		LOG4CPP_INFO(logger, "reset by user");
+		resetTracker(e.time());
+	} else if(e->m_value == 'h') {
+		LOG4CPP_INFO(logger, "hard reset by user");
+		m_face_model->Reset();
+	}
+}
+
+void OpenFaceTracking::resetTracker(Measurement::Timestamp t) {
+	if (m_referenceHead.isConnected()) {
+		try {
+			Measurement::Pose head = m_referenceHead.get(t);
+			Measurement::Matrix3x3 intrinsics = m_inIntrinsics.get(t);
+
+			
+
+			Math::Pose identity;
+			Math::Matrix< double, 3, 4 > poseMat(identity);
+			
+			Math::Matrix3x4d projectionMatrix = boost::numeric::ublas::prod(*intrinsics, poseMat);
+			Math::Vector3d pos = head->translation();
+			Math::Vector< double, 4 > hom(pos[0], pos[1], pos[2], 1.0);
+			Math::Vector< double, 3 > tmp = boost::numeric::ublas::prod(projectionMatrix, hom);
+			double w = tmp[2];
+			tmp = tmp / w;
+
+			
+			tmp[1] = m_imageHeight - 1 - tmp[1];
+
+			double x = tmp[0] / m_imageWidth;
+			double y = tmp[1] / m_imageHeight;
+
+			//LOG4CPP_INFO(logger, "search for head at " << tmp[0] << " : " << tmp[1] << "    " << x << " : " << y);
+
+			
+			m_face_model->Reset(x,y);
+
+			return;
+		}
+		catch (...) {
+
+		}
+	} 
+	// reset with no addition info
+	//LOG4CPP_INFO(logger, "hard reset, no info");
+	m_face_model->Reset();
 }
 
 OpenFaceTracking::~OpenFaceTracking()

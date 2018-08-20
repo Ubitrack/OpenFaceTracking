@@ -78,6 +78,117 @@
                 	<h:p>Required: Path and file name of the model file such as <h:code>/model/main_ceclm_general.txt</h:code> or <h:code>/model/main_clm_general.txt</h:code>.</h:p>
                	</Description>
             </Attribute>
+			<Attribute name="minLikelihood" default="-5" xsi:type="DoubleAttributeDeclarationType" displayName="minLikelihood">
+				<Description>
+					<h:p></h:p>
+				</Description>
+			</Attribute>
+			<Attribute name="maxDelay" default="20" xsi:type="IntAttributeDeclarationType" displayName="maxDelay">
+				<Description>
+					<h:p>maxDelay in ms</h:p>
+				</Description>
+			</Attribute>
+			
+		</DataflowConfiguration>
+	</Pattern>
+	
+	<Pattern name="OpenFaceTrackingWithControl" displayName="Open Face Tracking with Control">
+		<Description>
+			<h:p>
+				
+			</h:p>
+		</Description>
+		<Input>
+			<Node name="Camera" displayName="Camera" />
+			<Node name="ImagePlane" displayName="Image Plane" />
+			<Node name="Head" displayName="Head" />
+			<Node name="EventA" displayName="EventA" />
+			<Node name="EventB" displayName="EventB" />
+			
+			<Edge name="ImageInput" source="Camera"	destination="ImagePlane" displayName="Image Input Color">
+				<Description>
+					
+				</Description>				
+				<Predicate>type=='Image'</Predicate>
+			</Edge>
+			<Edge name="ImageInputGray" source="Camera"	destination="ImagePlane" displayName="Image Input Gray">
+				<Description>
+					
+				</Description>				
+				<Predicate>type=='Image'</Predicate>
+			</Edge>
+			<Edge name="Intrinsics" source="Camera"	destination="ImagePlane" displayName="Intrinsics">
+				<Description>
+					
+				</Description>				
+				<Predicate>type=='3x3Matrix'&amp;&amp;mode=='pull'</Predicate>
+			</Edge>
+			<Edge name="RefCam2Head" source="Camera"	destination="Head" displayName="RefCam2Head">
+				<Description>
+					
+				</Description>				
+				<Predicate>type=='6D'&amp;&amp;mode=='pull'</Predicate>
+			</Edge>
+			<Edge name="EventIn" source="EventA"	destination="EventB" displayName="EventIn">
+				<Description>
+					
+				</Description>				
+				<Predicate>type=='Button'&amp;&amp;mode=='push'</Predicate>
+			</Edge>
+		</Input>
+		<Output>
+			
+			
+			<Edge name="Output" source="Camera" destination="Head" displayName="Head Pose">
+				<Description>
+					
+				</Description>
+				<Attribute name="type" value="6D" xsi:type="EnumAttributeReferenceType"/>								
+			</Edge>	
+			<Edge name="OutputError" source="Camera" destination="Head" displayName="Head Error Pose">
+				<Description>
+					
+				</Description>
+				<Attribute name="type" value="6DError" xsi:type="EnumAttributeReferenceType"/>				
+				<Attribute name="mode" value="push" xsi:type="EnumAttributeReferenceType"/>		
+			</Edge>
+			<Edge name="DebugImage" source="Camera" destination="ImagePlane" displayName="DebugImage">
+				<Description>
+					
+				</Description>
+				<Attribute name="type" value="Image" xsi:type="EnumAttributeReferenceType"/>								
+				<Attribute name="mode" value="push" xsi:type="EnumAttributeReferenceType"/>				
+			</Edge>				
+		</Output>
+
+		<Constraints>
+        	<TriggerGroup>
+                <Edge edge-ref="ImageInput"/>
+                <Edge edge-ref="ImageInputGray"/>
+				<Edge edge-ref="Output"/>
+
+    
+            </TriggerGroup>
+        </Constraints>
+
+		<DataflowConfiguration>
+			<UbitrackLib class="OpenFaceTracking" />
+
+            <Attribute name="modelFile" default="build/install" displayName="Model File" xsi:type="PathAttributeDeclarationType">
+                <Description>
+                	<h:p>Required: Path and file name of the model file such as <h:code>/model/main_ceclm_general.txt</h:code> or <h:code>/model/main_clm_general.txt</h:code>.</h:p>
+               	</Description>
+            </Attribute>
+			<Attribute name="minLikelihood" default="-5" xsi:type="DoubleAttributeDeclarationType" displayName="minLikelihood">
+				<Description>
+					<h:p></h:p>
+				</Description>
+			</Attribute>
+			<Attribute name="maxDelay" default="20" xsi:type="IntAttributeDeclarationType" displayName="maxDelay">
+				<Description>
+					<h:p>maxDelay in ms</h:p>
+				</Description>
+			</Attribute>
 		</DataflowConfiguration>
 	</Pattern>
 
