@@ -468,6 +468,7 @@ void OpenFaceTracking::compute(Measurement::Timestamp t)
 
 				tmp = boost::numeric::ublas::prod(projectionMatrix, hom);
 				double w = tmp[2];
+				if (w == 0.0) LOG4CPP_INFO(logger, "Divide by Zero!!!");
 				tmp = tmp / w;
 				double d = (tmp[0] - (points2d.at(i))[0]) * (tmp[0] - (points2d.at(i))[0]) + (tmp[1] - (points2d.at(i))[1]) * (tmp[1] - (points2d.at(i))[1]);
 				residual += d;
